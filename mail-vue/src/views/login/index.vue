@@ -81,13 +81,11 @@
                     type="text" autocomplete="off"/>
           <el-input v-if="settingStore.settings.regKey === 2" v-model="registerForm.code"
                     :placeholder="$t('regKeyOptional')" type="text" autocomplete="off"/>
-          <div v-show="verifyShow"
+          <div
+               v-if="registerCaptchaEnabled"
+               v-show="verifyShow"
+               ref="registerCaptchaRef"
                class="register-turnstile"
-               :data-sitekey="settingStore.settings.siteKey"
-               data-callback="onTurnstileSuccess"
-               data-error-callback="onTurnstileError"
-               data-after-interactive-callback="loadAfter"
-               data-before-interactive-callback="loadBefore"
           >
             <span style="font-size: 12px;color: #F56C6C" v-if="botJsError">{{ $t('verifyModuleFailed') }}</span>
           </div>
@@ -148,7 +146,7 @@
 
 <script setup>
 import router from "@/router";
-import {computed, nextTick, reactive, ref} from "vue";
+import {computed, nextTick, onBeforeUnmount, reactive, ref, watch} from "vue";
 import {login} from "@/request/login.js";
 import {register} from "@/request/login.js";
 import {isEmail} from "@/utils/verify-utils.js";
@@ -162,6 +160,13 @@ import {loginUserInfo} from "@/request/my.js";
 import {permsToRouter} from "@/perm/perm.js";
 import {useI18n} from "vue-i18n";
 import {oauthBindUser, oauthLinuxDoLogin} from "@/request/ouath.js";
+import {
+  isTurnstileCaptchaEnabled,
+  isTurnstileCaptchaRequired,
+  removeTurnstileWidget,
+  renderTurnstileWidget,
+  resetTurnstileWidget
+} from "@/utils/captcha.js";
 
 const {t} = useI18n();
 const accountStore = useAccountStore();
@@ -197,39 +202,91 @@ const domainList = settingStore.domainList;
 const registerLoading = ref(false)
 suffix.value = domainList[0]
 const verifyShow = ref(false)
+const registerCaptchaRef = ref(null)
 let verifyToken = ''
 let turnstileId = null
-let botJsError = ref(false)
+const botJsError = ref(false)
 let verifyErrorCount = 0
 
-window.onTurnstileSuccess = (token) => {
-  verifyToken = token;
-};
+const registerCaptchaEnabled = computed(() => isTurnstileCaptchaEnabled(settingStore.settings))
+const registerCaptchaRequired = computed(() => isTurnstileCaptchaRequired(
+  settingStore.settings,
+  settingStore.settings.registerVerify,
+  settingStore.settings.regVerifyOpen
+))
 
-window.onTurnstileError = (e) => {
+watch(show, (mode) => {
+  if (mode === 'login') {
+    resetRegisterCaptcha()
+  }
+})
+
+function handleRegisterCaptchaError(error) {
   if (verifyErrorCount >= 4) {
     return
   }
   verifyErrorCount++
-  console.warn('人机验加载失败', e)
+  console.warn('人机验证加载失败', error)
   setTimeout(() => {
-    nextTick(() => {
-      if (!turnstileId) {
-        turnstileId = window.turnstile.render('.register-turnstile')
-      } else {
-        window.turnstile.reset(turnstileId);
-      }
-    })
+    if (!registerCaptchaEnabled.value) {
+      return
+    }
+
+    if (turnstileId !== null) {
+      resetTurnstileWidget(turnstileId)
+      return
+    }
+
+    showRegisterCaptcha()
   }, 1500)
-};
-
-window.loadAfter = (e) => {
-  console.log('loadAfter')
 }
 
-window.loadBefore = (e) => {
-  console.log('loadBefore')
+function resetRegisterCaptcha(removeWidget = false) {
+  verifyToken = ''
+  verifyShow.value = false
+  botJsError.value = false
+  verifyErrorCount = 0
+
+  if (removeWidget) {
+    removeTurnstileWidget(turnstileId)
+    turnstileId = null
+    return
+  }
+
+  resetTurnstileWidget(turnstileId)
 }
+
+async function showRegisterCaptcha() {
+  if (!registerCaptchaEnabled.value) {
+    return
+  }
+
+  verifyShow.value = true
+  botJsError.value = false
+
+  await nextTick()
+
+  try {
+    if (turnstileId === null) {
+      turnstileId = await renderTurnstileWidget(registerCaptchaRef.value, settingStore.settings, {
+        callback: (token) => {
+          verifyToken = token
+        },
+        errorCallback: handleRegisterCaptchaError
+      })
+      return
+    }
+
+    resetTurnstileWidget(turnstileId)
+  } catch (error) {
+    botJsError.value = true
+    console.warn('人机验证脚本加载失败', error)
+  }
+}
+
+onBeforeUnmount(() => {
+  resetRegisterCaptcha(true)
+})
 
 const loginOpacity = computed(() => {
   const opacity = settingStore.settings.loginOpacity
@@ -417,8 +474,6 @@ function submitRegister() {
     return
   }
 
-  console.log(registerForm.email)
-
   if (registerForm.email.length < settingStore.settings.minEmailPrefix) {
     ElMessage({
       message: t('minEmailPrefix', {msg: settingStore.settings.minEmailPrefix}),
@@ -479,21 +534,9 @@ function submitRegister() {
 
   }
 
-  if (!verifyToken && (settingStore.settings.registerVerify === 0 || (settingStore.settings.registerVerify === 2 && settingStore.settings.regVerifyOpen))) {
+  if (!verifyToken && registerCaptchaRequired.value) {
     if (!verifyShow.value) {
-      verifyShow.value = true
-      nextTick(() => {
-        if (!turnstileId) {
-          try {
-            turnstileId = window.turnstile.render('.register-turnstile')
-          } catch (e) {
-            botJsError.value = true
-            console.log('人机验证js加载失败')
-          }
-        } else {
-          window.turnstile.reset('.register-turnstile')
-        }
-      })
+      showRegisterCaptcha()
     } else if (!botJsError.value) {
       ElMessage({
         message: t('botVerifyMsg'),
@@ -520,9 +563,8 @@ function submitRegister() {
     registerForm.confirmPassword = ''
     registerForm.code = ''
     registerLoading.value = false
-    verifyToken = ''
     settingStore.settings.regVerifyOpen = regVerifyOpen
-    verifyShow.value = false
+    resetRegisterCaptcha()
     ElMessage({
       message: t('regSuccessMsg'),
       type: 'success',
@@ -532,18 +574,9 @@ function submitRegister() {
 
     registerLoading.value = false
 
-    if (res.code === 400) {
-      verifyToken = ''
+    if (res.code === 400 && registerCaptchaEnabled.value) {
       settingStore.settings.regVerifyOpen = true
-      if (turnstileId) {
-        window.turnstile.reset(turnstileId)
-      } else {
-        nextTick(() => {
-          turnstileId = window.turnstile.render('.register-turnstile')
-        })
-      }
-      verifyShow.value = true
-
+      showRegisterCaptcha()
     }
   });
 }

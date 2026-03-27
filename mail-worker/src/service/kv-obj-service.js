@@ -17,16 +17,44 @@ const kvObjService = {
 		await Promise.all(keys.map( key => c.env.kv.delete(key)));
 	},
 
-	async toObjResp(c, key) {
-
+	async getObj(c, key) {
 		const obj = await c.env.kv.getWithMetadata(key, { type: "arrayBuffer"});
 
-		return new Response(obj.value, {
-			headers: {
-				'Content-Type': obj.metadata?.contentType || 'application/octet-stream',
-				'Content-Disposition': obj.metadata?.contentDisposition || null,
-				'Cache-Control': obj.metadata?.cacheControl || null
+		if (!obj?.value) {
+			return null;
+		}
+
+		return {
+			body: obj.value,
+			httpMetadata: {
+				contentType: obj.metadata?.contentType,
+				contentDisposition: obj.metadata?.contentDisposition,
+				cacheControl: obj.metadata?.cacheControl
 			}
+		};
+	},
+
+	async toObjResp(c, key) {
+
+		const obj = await this.getObj(c, key);
+
+		if (!obj?.body) {
+			return new Response('Not Found', { status: 404 });
+		}
+
+		const headers = new Headers();
+		headers.set('Content-Type', obj.httpMetadata?.contentType || 'application/octet-stream');
+
+		if (obj.httpMetadata?.contentDisposition) {
+			headers.set('Content-Disposition', obj.httpMetadata.contentDisposition);
+		}
+
+		if (obj.httpMetadata?.cacheControl) {
+			headers.set('Cache-Control', obj.httpMetadata.cacheControl);
+		}
+
+		return new Response(obj.body, {
+			headers
 		});
 
 	}

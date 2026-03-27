@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 const app = new Hono();
 
-import result from '../model/result';
+import result from '../model/result.js';
 import { cors } from 'hono/cors';
 
 app.use('*', cors());

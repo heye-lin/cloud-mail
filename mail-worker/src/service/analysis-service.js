@@ -1,11 +1,11 @@
-import analysisDao from '../dao/analysis-dao';
-import orm from '../entity/orm';
-import email from '../entity/email';
+import analysisDao from '../dao/analysis-dao.js';
+import orm from '../entity/orm.js';
+import email from '../entity/email.js';
 import { desc, count, eq, and, ne, isNotNull } from 'drizzle-orm';
-import { emailConst } from '../const/entity-const';
-import kvConst from '../const/kv-const';
+import { emailConst } from '../const/entity-const.js';
+import kvConst from '../const/kv-const.js';
 import dayjs from 'dayjs';
-import { toUtc } from '../utils/date-uitil';
+import { toUtc } from '../utils/date-uitil.js';
 const analysisService = {
 
 	async echarts(c, params) {

@@ -1,6 +1,6 @@
-import emailService from './email-service';
-import { emailConst } from '../const/entity-const';
-import BizError from '../error/biz-error';
+import emailService from './email-service.js';
+import { emailConst } from '../const/entity-const.js';
+import BizError from '../error/biz-error.js';
 
 const resendService = {
 

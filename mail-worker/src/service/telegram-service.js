@@ -1,18 +1,18 @@
-import orm from '../entity/orm';
-import email from '../entity/email';
-import settingService from './setting-service';
+import orm from '../entity/orm.js';
+import email from '../entity/email.js';
+import settingService from './setting-service.js';
 import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc.js';
+import timezone from 'dayjs/plugin/timezone.js';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 import { eq } from 'drizzle-orm';
-import jwtUtils from '../utils/jwt-utils';
-import emailMsgTemplate from '../template/email-msg';
-import emailTextTemplate from '../template/email-text';
-import emailHtmlTemplate from '../template/email-html';
-import verifyUtils from '../utils/verify-utils';
-import domainUtils from "../utils/domain-uitls";
+import jwtUtils from '../utils/jwt-utils.js';
+import emailMsgTemplate from '../template/email-msg.js';
+import emailTextTemplate from '../template/email-text.js';
+import emailHtmlTemplate from '../template/email-html.js';
+import verifyUtils from '../utils/verify-utils.js';
+import domainUtils from "../utils/domain-uitls.js";
 
 const telegramService = {
 
@@ -50,31 +50,35 @@ const telegramService = {
 		const tgChatIds = tgChatId.split(',');
 
 		const jwtToken = await jwtUtils.generateToken(c, { emailId: email.emailId })
-
-		const webAppUrl = customDomain ? `${domainUtils.toOssDomain(customDomain)}/api/telegram/getEmail/${jwtToken}` : 'https://www.cloudflare.com/404'
+		const webAppUrl = customDomain ? `${domainUtils.toOssDomain(customDomain)}/api/telegram/getEmail/${jwtToken}` : null
 
 		await Promise.all(tgChatIds.map(async chatId => {
 			try {
+				const body = {
+					chat_id: chatId,
+					parse_mode: 'HTML',
+					text: emailMsgTemplate(email, tgMsgTo, tgMsgFrom, tgMsgText)
+				};
+
+				if (webAppUrl) {
+					body.reply_markup = {
+						inline_keyboard: [
+							[
+								{
+									text: '查看',
+									web_app: { url: webAppUrl }
+								}
+							]
+						]
+					};
+				}
+
 				const res = await fetch(`https://api.telegram.org/bot${tgBotToken}/sendMessage`, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json'
 					},
-					body: JSON.stringify({
-						chat_id: chatId,
-						parse_mode: 'HTML',
-						text: emailMsgTemplate(email, tgMsgTo, tgMsgFrom, tgMsgText),
-						reply_markup: {
-							inline_keyboard: [
-								[
-									{
-										text: '查看',
-										web_app: { url: webAppUrl }
-									}
-								]
-							]
-						}
-					})
+					body: JSON.stringify(body)
 				});
 				if (!res.ok) {
 					console.error(`转发 Telegram 失败 status: ${res.status} response: ${await res.text()}`);

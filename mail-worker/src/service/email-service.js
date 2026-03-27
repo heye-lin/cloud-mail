@@ -1,26 +1,29 @@
-import orm from '../entity/orm';
-import email from '../entity/email';
-import { attConst, emailConst, isDel, settingConst } from '../const/entity-const';
+import orm from '../entity/orm.js';
+import email from '../entity/email.js';
+import { attConst, emailConst, isDel, settingConst } from '../const/entity-const.js';
 import { and, desc, eq, gt, inArray, lt, count, asc, sql, ne, or, like, lte, gte } from 'drizzle-orm';
-import { star } from '../entity/star';
-import settingService from './setting-service';
-import accountService from './account-service';
-import BizError from '../error/biz-error';
-import emailUtils from '../utils/email-utils';
+import { star } from '../entity/star.js';
+import settingService from './setting-service.js';
+import accountService from './account-service.js';
+import BizError from '../error/biz-error.js';
+import emailUtils from '../utils/email-utils.js';
 import { Resend } from 'resend';
-import attService from './att-service';
+import attService from './att-service.js';
 import { parseHTML } from 'linkedom';
-import userService from './user-service';
-import roleService from './role-service';
-import user from '../entity/user';
-import starService from './star-service';
+import userService from './user-service.js';
+import roleService from './role-service.js';
+import user from '../entity/user.js';
+import starService from './star-service.js';
 import dayjs from 'dayjs';
-import kvConst from '../const/kv-const';
-import { t } from '../i18n/i18n'
-import domainUtils from '../utils/domain-uitls';
-import account from "../entity/account";
-import { att } from '../entity/att';
-import telegramService from './telegram-service';
+import kvConst from '../const/kv-const.js';
+import { t } from '../i18n/i18n.js'
+import domainUtils from '../utils/domain-uitls.js';
+import account from "../entity/account.js";
+import { att } from '../entity/att.js';
+import telegramService from './telegram-service.js';
+import { ciContains } from '../utils/query-utils.js';
+
+const MAX_INT_32 = 2147483647;
 
 const emailService = {
 
@@ -43,7 +46,7 @@ const emailService = {
 			if (timeSort) {
 				emailId = 0;
 			} else {
-				emailId = 9999999999;
+				emailId = MAX_INT_32;
 			}
 
 		}
@@ -614,7 +617,7 @@ const emailService = {
 			if (timeSort) {
 				emailId = 0;
 			} else {
-				emailId = 9999999999;
+				emailId = MAX_INT_32;
 			}
 
 		}
@@ -638,24 +641,24 @@ const emailService = {
 		}
 
 		if (userEmail) {
-			conditions.push(sql`${user.email} COLLATE NOCASE LIKE ${'%'+ userEmail + '%'}`);
+			conditions.push(ciContains(c, user.email, userEmail));
 		}
 
 		if (accountEmail) {
 			conditions.push(
 				or(
-					sql`${email.toEmail} COLLATE NOCASE LIKE ${'%'+ accountEmail + '%'}`,
-					sql`${email.sendEmail} COLLATE NOCASE LIKE ${'%'+ accountEmail + '%'}`,
+					ciContains(c, email.toEmail, accountEmail),
+					ciContains(c, email.sendEmail, accountEmail),
 				)
 			)
 		}
 
 		if (name) {
-			conditions.push(sql`${email.name} COLLATE NOCASE LIKE ${'%'+ name + '%'}`);
+			conditions.push(ciContains(c, email.name, name));
 		}
 
 		if (subject) {
-			conditions.push(sql`${email.subject} COLLATE NOCASE LIKE ${'%'+ subject + '%'}`);
+			conditions.push(ciContains(c, email.subject, subject));
 		}
 
 		conditions.push(ne(email.status, emailConst.status.SAVING));

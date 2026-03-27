@@ -6,6 +6,9 @@ export const useSettingStore = defineStore('setting', {
         settings: {
             r2Domain: '',
             loginOpacity: 1.00,
+            captchaEnabled: false,
+            captchaProvider: 'disabled',
+            siteKey: null,
         },
         lang: '',
     }),

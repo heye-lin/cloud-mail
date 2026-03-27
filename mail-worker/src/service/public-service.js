@@ -1,19 +1,27 @@
-import BizError from '../error/biz-error';
-import orm from '../entity/orm';
+import BizError from '../error/biz-error.js';
+import orm from '../entity/orm.js';
 import { v4 as uuidv4 } from 'uuid';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
-import saltHashUtils from '../utils/crypto-utils';
-import cryptoUtils from '../utils/crypto-utils';
-import emailUtils from '../utils/email-utils';
-import roleService from './role-service';
-import verifyUtils from '../utils/verify-utils';
-import { t } from '../i18n/i18n';
-import reqUtils from '../utils/req-utils';
+import saltHashUtils from '../utils/crypto-utils.js';
+import cryptoUtils from '../utils/crypto-utils.js';
+import emailUtils from '../utils/email-utils.js';
+import roleService from './role-service.js';
+import verifyUtils from '../utils/verify-utils.js';
+import { t } from '../i18n/i18n.js';
+import reqUtils from '../utils/req-utils.js';
 import dayjs from 'dayjs';
-import { isDel, roleConst } from '../const/entity-const';
-import email from '../entity/email';
-import userService from './user-service';
-import KvConst from '../const/kv-const';
+import { isDel, roleConst } from '../const/entity-const.js';
+import email from '../entity/email.js';
+import userService from './user-service.js';
+import KvConst from '../const/kv-const.js';
+import user from '../entity/user.js';
+import account from '../entity/account.js';
+import { ciLike } from '../utils/query-utils.js';
+
+function isUniqueViolation(error) {
+	const message = error?.message || '';
+	return message.includes('SQLITE_CONSTRAINT') || message.includes('duplicate key value') || message.includes('UNIQUE constraint failed');
+}
 
 const publicService = {
 
@@ -51,23 +59,23 @@ const publicService = {
 		let conditions = []
 
 		if (toEmail) {
-			conditions.push(sql`${email.toEmail} COLLATE NOCASE LIKE ${toEmail}`)
+			conditions.push(ciLike(c, email.toEmail, toEmail))
 		}
 
 		if (sendEmail) {
-			conditions.push(sql`${email.sendEmail} COLLATE NOCASE LIKE ${sendEmail}`)
+			conditions.push(ciLike(c, email.sendEmail, sendEmail))
 		}
 
 		if (sendName) {
-			conditions.push(sql`${email.name} COLLATE NOCASE LIKE ${sendName}`)
+			conditions.push(ciLike(c, email.name, sendName))
 		}
 
 		if (subject) {
-			conditions.push(sql`${email.subject} COLLATE NOCASE LIKE ${subject}`)
+			conditions.push(ciLike(c, email.subject, subject))
 		}
 
 		if (content) {
-			conditions.push(sql`${email.content} COLLATE NOCASE LIKE ${content}`)
+			conditions.push(ciLike(c, email.content, content))
 		}
 
 		if (type || type === 0) {
@@ -124,8 +132,6 @@ const publicService = {
 		const roleList = await roleService.roleSelectUse(c);
 		const defRole = roleList.find(roleRow => roleRow.isDefault === roleConst.isDefault.OPEN);
 
-		const userList = [];
-
 		for (const emailRow of list) {
 			let { email, hash, salt, roleName } = emailRow;
 			let type = defRole.roleId;
@@ -135,26 +141,32 @@ const publicService = {
 				type = roleRow ? roleRow.roleId : type;
 			}
 
-			const userSql = `INSERT INTO user (email, password, salt, type, os, browser, active_ip, create_ip, device, active_time, create_time)
-			VALUES ('${email}', '${hash}', '${salt}', '${type}', '${os}', '${browser}', '${activeIp}', '${activeIp}', '${device}', '${activeTime}', '${activeTime}')`
+			try {
+				const userRow = await orm(c).insert(user).values({
+					email,
+					password: hash,
+					salt,
+					type,
+					os,
+					browser,
+					activeIp,
+					createIp: activeIp,
+					device,
+					activeTime,
+					createTime: activeTime
+				}).returning().get();
 
-			const accountSql = `INSERT INTO account (email, name, user_id)
-			VALUES ('${email}', '${emailUtils.getName(email)}', 0);`;
+				await orm(c).insert(account).values({
+					email,
+					name: emailUtils.getName(email),
+					userId: userRow.userId
+				}).run();
+			} catch (error) {
+				if (isUniqueViolation(error)) {
+					throw new BizError(t('emailExistDatabase'));
+				}
 
-			userList.push(c.env.db.prepare(userSql));
-			userList.push(c.env.db.prepare(accountSql));
-
-		}
-
-		userList.push(c.env.db.prepare(`UPDATE account SET user_id = (SELECT user_id FROM user WHERE user.email = account.email) WHERE user_id = 0;`))
-
-		try {
-			await c.env.db.batch(userList);
-		} catch (e) {
-			if(e.message.includes('SQLITE_CONSTRAINT')) {
-				throw new BizError(t('emailExistDatabase'))
-			} else {
-				throw e
+				throw error;
 			}
 		}
 

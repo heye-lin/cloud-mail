@@ -271,6 +271,12 @@
             <div class="card-title">{{ $t('turnstileSetting') }}</div>
             <div class="card-content">
               <div class="setting-item">
+                <div><span>{{ $t('tabStatus') }}</span></div>
+                <div class="forward">
+                  <span>{{ setting.captchaEnabled ? $t('enabled') : $t('disabled') }}</span>
+                </div>
+              </div>
+              <div class="setting-item">
                 <div><span>{{ $t('signUpVerification') }}</span></div>
                 <div>
                   <el-button class="opt-button" size="small" type="primary" @click="openRegVerifyCount">
@@ -311,7 +317,7 @@
               <div class="setting-item">
                 <div><span>Site Key</span></div>
                 <div class="bot-verify">
-                  <span>{{ setting.siteKey }}</span>
+                  <span>{{ setting.siteKey || '--' }}</span>
                   <el-button class="opt-button" size="small" type="primary" @click="turnstileShow = true">
                     <Icon icon="lsicon:edit-outline" width="16" height="16"/>
                   </el-button>
@@ -320,7 +326,7 @@
               <div class="setting-item">
                 <div><span>Secret Key</span></div>
                 <div class="bot-verify">
-                  <span> {{ setting.secretKey }} </span>
+                  <span> {{ setting.secretKey || '--' }} </span>
                   <el-button class="opt-button" size="small" type="primary" @click="turnstileShow = true">
                     <Icon icon="lsicon:edit-outline" width="16" height="16"/>
                   </el-button>
@@ -1272,13 +1278,28 @@ function beforeChange() {
   return true
 }
 
-function change(e) {
-  const settingForm = {...setting.value}
+function stripReadonlySettingFields(settingForm) {
+  delete settingForm.resendTokens
   delete settingForm.siteKey
   delete settingForm.secretKey
   delete settingForm.s3AccessKey
   delete settingForm.s3SecretKey
-  delete settingForm.resendTokens
+  delete settingForm.domainList
+  delete settingForm.hasR2
+  delete settingForm.storageType
+  delete settingForm.regVerifyOpen
+  delete settingForm.addVerifyOpen
+  delete settingForm.captchaProvider
+  delete settingForm.captchaEnabled
+  delete settingForm.linuxdoClientId
+  delete settingForm.linuxdoCallbackUrl
+  delete settingForm.linuxdoSwitch
+  delete settingForm.projectLink
+  return settingForm
+}
+
+function change(e) {
+  const settingForm = stripReadonlySettingFields({...setting.value})
   editSetting(settingForm, false)
 }
 

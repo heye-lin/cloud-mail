@@ -1,21 +1,27 @@
-import KvConst from '../const/kv-const';
-import setting from '../entity/setting';
-import orm from '../entity/orm';
-import {verifyRecordType} from '../const/entity-const';
-import fileUtils from '../utils/file-utils';
-import r2Service from './r2-service';
-import constant from '../const/constant';
-import BizError from '../error/biz-error';
-import {t} from '../i18n/i18n'
-import verifyRecordService from './verify-record-service';
+import KvConst from '../const/kv-const.js';
+import setting from '../entity/setting.js';
+import orm from '../entity/orm.js';
+import {verifyRecordType} from '../const/entity-const.js';
+import fileUtils from '../utils/file-utils.js';
+import r2Service from './r2-service.js';
+import constant from '../const/constant.js';
+import BizError from '../error/biz-error.js';
+import {t} from '../i18n/i18n.js'
+import verifyRecordService from './verify-record-service.js';
+import captchaService from './captcha-service.js';
 
 const settingService = {
 
 	async refresh(c) {
 		const settingRow = await orm(c).select().from(setting).get();
+		if (!settingRow) {
+			throw new BizError('数据库未初始化 Database not initialized.');
+		}
 		settingRow.resendTokens = JSON.parse(settingRow.resendTokens);
-		c.set('setting', settingRow);
+		captchaService.applySetting(c, settingRow);
+		c.set?.('setting', settingRow);
 		await c.env.kv.put(KvConst.SETTING, JSON.stringify(settingRow));
+		return settingRow;
 	},
 
 	async query(c) {
@@ -24,10 +30,10 @@ const settingService = {
 			return c.get('setting')
 		}
 
-		const setting = await c.env.kv.get(KvConst.SETTING, { type: 'json' });
+		let setting = await c.env.kv.get(KvConst.SETTING, { type: 'json' });
 
 		if (!setting) {
-			throw new BizError('数据库未初始化 Database not initialized.');
+			setting = await this.refresh(c);
 		}
 
 		let domainList = c.env.domain;
@@ -59,8 +65,6 @@ const settingService = {
 			linuxdoSwitch = false
 		}
 
-		console.log(projectLink)
-
 		if (typeof projectLink === 'string' && projectLink === 'false') {
 			projectLink = false
 		} else if (projectLink === false) {
@@ -76,6 +80,7 @@ const settingService = {
 		setting.linuxdoSwitch = linuxdoSwitch;
 
 		setting.emailPrefixFilter = setting.emailPrefixFilter.split(",").filter(Boolean);
+		captchaService.applySetting(c, setting);
 
 		c.set?.('setting', setting);
 		return setting;
@@ -89,8 +94,8 @@ const settingService = {
 		]);
 
 
-		if (!showSiteKey) {
-			settingRow.siteKey = settingRow.siteKey ? `${settingRow.siteKey.slice(0, 6)}******` : null;
+		if (!showSiteKey && settingRow.siteKey) {
+			settingRow.siteKey = `${settingRow.siteKey.slice(0, 6)}******`;
 		}
 
 		settingRow.secretKey = settingRow.secretKey ? `${settingRow.secretKey.slice(0, 6)}******` : null;
@@ -115,8 +120,8 @@ const settingService = {
 			}
 		})
 
-		settingRow.regVerifyOpen = regVerifyOpen
-		settingRow.addVerifyOpen = addVerifyOpen
+		settingRow.regVerifyOpen = settingRow.captchaEnabled ? regVerifyOpen : false
+		settingRow.addVerifyOpen = settingRow.captchaEnabled ? addVerifyOpen : false
 
 		settingRow.storageType = await r2Service.storageType(c);
 
@@ -194,17 +199,17 @@ const settingService = {
 			manyEmail: settingRow.manyEmail,
 			addEmail: settingRow.addEmail,
 			autoRefresh: settingRow.autoRefresh,
-			addEmailVerify: settingRow.addEmailVerify,
-			registerVerify: settingRow.registerVerify,
+			addEmailVerify: settingRow.captchaEnabled ? settingRow.addEmailVerify : 1,
+			registerVerify: settingRow.captchaEnabled ? settingRow.registerVerify : 1,
 			send: settingRow.send,
 			r2Domain: settingRow.r2Domain,
-			siteKey: settingRow.siteKey,
+			siteKey: settingRow.captchaEnabled ? settingRow.siteKey : null,
 			background: settingRow.background,
 			loginOpacity: settingRow.loginOpacity,
 			domainList: settingRow.domainList,
 			regKey: settingRow.regKey,
-			regVerifyOpen: settingRow.regVerifyOpen,
-			addVerifyOpen: settingRow.addVerifyOpen,
+			regVerifyOpen: settingRow.captchaEnabled ? settingRow.regVerifyOpen : false,
+			addVerifyOpen: settingRow.captchaEnabled ? settingRow.addVerifyOpen : false,
 			noticeTitle: settingRow.noticeTitle,
 			noticeContent: settingRow.noticeContent,
 			noticeType: settingRow.noticeType,
@@ -214,6 +219,8 @@ const settingService = {
 			noticeOffset: settingRow.noticeOffset,
 			notice: settingRow.notice,
 			loginDomain: settingRow.loginDomain,
+			captchaProvider: settingRow.captchaProvider,
+			captchaEnabled: settingRow.captchaEnabled,
 			linuxdoClientId: settingRow.linuxdoClientId,
 			linuxdoCallbackUrl: settingRow.linuxdoCallbackUrl,
 			linuxdoSwitch: settingRow.linuxdoSwitch,

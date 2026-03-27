@@ -1,10 +1,10 @@
-import { sqliteTable, text, integer} from 'drizzle-orm/sqlite-core';
-import { sql } from 'drizzle-orm';
-export const email = sqliteTable('verify_record', {
-	vrId: integer('vr_id').primaryKey({ autoIncrement: true }),
-	ip: integer('ip').notNull().default(''),
+import { table, text, integer, primaryId, currentTimestampText } from './schema-core.js';
+
+export const email = table('verify_record', {
+	vrId: primaryId('vr_id'),
+	ip: text('ip').notNull().default(''),
 	count: integer('count').notNull().default(1),
 	type: integer('type').notNull().default(0),
-	updateTime: text('update_time').default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updateTime: currentTimestampText('update_time', true),
 });
 export default email

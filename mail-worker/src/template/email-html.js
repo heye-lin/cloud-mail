@@ -1,5 +1,5 @@
 import { parseHTML } from 'linkedom';
-import domainUtils from '../utils/domain-uitls';
+import domainUtils from '../utils/domain-uitls.js';
 
 export default function emailHtmlTemplate(html, domain) {
 

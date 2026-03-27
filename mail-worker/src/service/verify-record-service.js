@@ -1,9 +1,9 @@
-import orm from '../entity/orm';
-import verifyRecord from '../entity/verify-record';
+import orm from '../entity/orm.js';
+import verifyRecord from '../entity/verify-record.js';
 import { eq, sql, and } from 'drizzle-orm';
 import dayjs from 'dayjs';
-import reqUtils from '../utils/req-utils';
-import { verifyRecordType } from '../const/entity-const';
+import reqUtils from '../utils/req-utils.js';
+import { verifyRecordType } from '../const/entity-const.js';
 
 const verifyRecordService = {
 
@@ -64,7 +64,7 @@ const verifyRecordService = {
 		+ 1`, updateTime: now
 			}).where(and(eq(verifyRecord.ip, ip),eq(verifyRecord.type,verifyRecordType.REG))).returning().get();
 		} else {
-			return  orm(c).insert(verifyRecord).values({ip, type: verifyRecordType.REG}).returning().run();
+			return  orm(c).insert(verifyRecord).values({ip, type: verifyRecordType.REG}).returning().get();
 		}
 	},
 

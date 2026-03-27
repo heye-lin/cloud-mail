@@ -105,11 +105,10 @@
         </el-button>
       </div>
       <div
+          v-if="addCaptchaEnabled"
+          ref="addCaptchaRef"
           class="add-email-turnstile"
           :class="verifyShow ? 'turnstile-show' : 'turnstile-hide'"
-          :data-sitekey="settingStore.settings.siteKey"
-          data-callback="onTurnstileSuccess"
-          data-error-callback="onTurnstileError"
       >
         <span style="font-size: 12px;color: #F56C6C" v-if="botJsError">{{ $t('verifyModuleFailed') }}</span>
       </div>
@@ -127,7 +126,7 @@
 </template>
 <script setup>
 import {Icon} from "@iconify/vue";
-import {nextTick, reactive, ref, watch} from "vue";
+import {computed, nextTick, onBeforeUnmount, reactive, ref, watch} from "vue";
 import {
   accountList,
   accountAdd,
@@ -145,6 +144,13 @@ import {useUserStore} from "@/store/user.js";
 import {hasPerm} from "@/perm/perm.js"
 import {useI18n} from "vue-i18n";
 import {AccountAllReceiveEnum} from "@/enums/account-enum.js";
+import {
+  isTurnstileCaptchaEnabled,
+  isTurnstileCaptchaRequired,
+  removeTurnstileWidget,
+  renderTurnstileWidget,
+  resetTurnstileWidget
+} from "@/utils/captcha.js";
 
 const {t} = useI18n();
 const userStore = useUserStore();
@@ -159,6 +165,7 @@ const noLoading = ref(false)
 const loading = ref(false)
 const followLoading = ref(false);
 const verifyShow = ref(false)
+const addCaptchaRef = ref(null)
 const setNameShow = ref(false)
 const setNameLoading = ref(false)
 const accountName = ref(null)
@@ -185,8 +192,21 @@ if (hasPerm('account:query')) {
   getAccountList()
 }
 
+const addCaptchaEnabled = computed(() => isTurnstileCaptchaEnabled(settingStore.settings))
+const addCaptchaRequired = computed(() => isTurnstileCaptchaRequired(
+  settingStore.settings,
+  settingStore.settings.addEmailVerify,
+  settingStore.settings.addVerifyOpen
+))
+
 watch(() => accountStore.changeUserAccountName, () => {
   accounts[0].name = accountStore.changeUserAccountName
+})
+
+watch(showAdd, (open) => {
+  if (!open) {
+    resetAddCaptcha(true)
+  }
 })
 
 
@@ -194,26 +214,72 @@ const openSelect = () => {
   mySelect.value.toggleMenu()
 }
 
-window.onTurnstileError = (e) => {
+function handleAddCaptchaError(error) {
   if (verifyErrorCount >= 4) {
     return
   }
   verifyErrorCount++
-  console.warn('人机验加载失败', e)
+  console.warn('人机验证加载失败', error)
   setTimeout(() => {
-    nextTick(() => {
-      if (!turnstileId) {
-        turnstileId = window.turnstile.render('.add-email-turnstile')
-      } else {
-        window.turnstile.reset(turnstileId);
-      }
-    })
-  }, 1500)
-};
+    if (!addCaptchaEnabled.value) {
+      return
+    }
 
-window.onTurnstileSuccess = (token) => {
-  verifyToken = token;
-};
+    if (turnstileId !== null) {
+      resetTurnstileWidget(turnstileId)
+      return
+    }
+
+    showAddCaptcha()
+  }, 1500)
+}
+
+function resetAddCaptcha(removeWidget = false) {
+  verifyToken = ''
+  verifyShow.value = false
+  botJsError.value = false
+  verifyErrorCount = 0
+
+  if (removeWidget) {
+    removeTurnstileWidget(turnstileId)
+    turnstileId = null
+    return
+  }
+
+  resetTurnstileWidget(turnstileId)
+}
+
+async function showAddCaptcha() {
+  if (!addCaptchaEnabled.value) {
+    return
+  }
+
+  verifyShow.value = true
+  botJsError.value = false
+
+  await nextTick()
+
+  try {
+    if (turnstileId === null) {
+      turnstileId = await renderTurnstileWidget(addCaptchaRef.value, settingStore.settings, {
+        callback: (token) => {
+          verifyToken = token
+        },
+        errorCallback: handleAddCaptchaError
+      })
+      return
+    }
+
+    resetTurnstileWidget(turnstileId)
+  } catch (error) {
+    botJsError.value = true
+    console.warn('人机验证脚本加载失败', error)
+  }
+}
+
+onBeforeUnmount(() => {
+  resetAddCaptcha(true)
+})
 
 function getSkeletonRows() {
   if (accounts.length > 20) return skeletonRows = 20
@@ -447,21 +513,9 @@ function submit() {
     return
   }
 
-  if (!verifyToken && (settingStore.settings.addEmailVerify === 0 || (settingStore.settings.addEmailVerify === 2 && settingStore.settings.addVerifyOpen))) {
+  if (!verifyToken && addCaptchaRequired.value) {
     if (!verifyShow.value) {
-      verifyShow.value = true
-      nextTick(() => {
-        if (!turnstileId) {
-          try {
-            turnstileId = window.turnstile.render('.add-email-turnstile')
-          } catch (e) {
-            botJsError.value = true
-            console.log('人机验证js加载失败')
-          }
-        } else {
-          window.turnstile.reset('.add-email-turnstile')
-        }
-      })
+      showAddCaptcha()
     } else if (!botJsError.value) {
       ElMessage({
         message: t('botVerifyMsg'),
@@ -478,26 +532,17 @@ function submit() {
     showAdd.value = false
     addForm.email = ''
     accounts.push(account)
-    verifyToken = ''
     settingStore.settings.addVerifyOpen = account.addVerifyOpen
     ElMessage({
       message: t('addSuccessMsg'),
       type: "success",
       plain: true
     })
-    verifyShow.value = false
+    resetAddCaptcha(true)
     userStore.refreshUserInfo()
   }).catch(res => {
-    if (res.code === 400) {
-      verifyToken = ''
-      if (turnstileId) {
-        window.turnstile.reset(turnstileId)
-      } else {
-        nextTick(() => {
-          turnstileId = window.turnstile.render('.add-email-turnstile')
-        })
-      }
-      verifyShow.value = true
+    if (res.code === 400 && addCaptchaEnabled.value) {
+      showAddCaptcha()
     }
     addLoading.value = false
   })

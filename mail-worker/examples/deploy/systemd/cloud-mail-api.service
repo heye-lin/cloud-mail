@@ -1,0 +1,16 @@
+[Unit]
+Description=Cloud Mail API
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/cloud-mail/mail-worker
+EnvironmentFile=/etc/cloud-mail/cloud-mail.env
+ExecStart=/usr/bin/env node /root/cloud-mail/mail-worker/src/node.js
+Restart=always
+RestartSec=5
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

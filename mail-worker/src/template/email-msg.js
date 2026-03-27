@@ -1,4 +1,4 @@
-import emailUtils from '../utils/email-utils';
+import emailUtils from '../utils/email-utils.js';
 
 export default function emailMsgTemplate(email, tgMsgTo, tgMsgFrom, tgMsgText) {
 

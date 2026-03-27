@@ -1,6 +1,6 @@
-import app from '../hono/hono';
-import result from '../model/result';
-import settingService from '../service/setting-service';
+import app from '../hono/hono.js';
+import result from '../model/result.js';
+import settingService from '../service/setting-service.js';
 
 app.put('/setting/set', async (c) => {
 	await settingService.set(c, await c.req.json());

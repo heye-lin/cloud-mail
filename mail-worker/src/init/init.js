@@ -1,9 +1,14 @@
-import settingService from '../service/setting-service';
-import emailUtils from '../utils/email-utils';
-import {emailConst} from "../const/entity-const";
+import settingService from '../service/setting-service.js';
+import emailUtils from '../utils/email-utils.js';
+import {emailConst} from "../const/entity-const.js";
+import { isPgDialect } from '../platform/db-dialect.js';
 
 const dbInit = {
 	async init(c) {
+
+		if (isPgDialect(c)) {
+			return c.text('PostgreSQL bootstrap is not supported via /init. Use SQL migrations instead.', 400);
+		}
 
 		const secret = c.req.param('secret');
 

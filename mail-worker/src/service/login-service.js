@@ -1,24 +1,24 @@
-import BizError from '../error/biz-error';
-import userService from './user-service';
-import emailUtils from '../utils/email-utils';
-import { isDel, settingConst, userConst } from '../const/entity-const';
-import JwtUtils from '../utils/jwt-utils';
+import BizError from '../error/biz-error.js';
+import userService from './user-service.js';
+import emailUtils from '../utils/email-utils.js';
+import { isDel, settingConst, userConst } from '../const/entity-const.js';
+import JwtUtils from '../utils/jwt-utils.js';
 import { v4 as uuidv4 } from 'uuid';
-import KvConst from '../const/kv-const';
-import constant from '../const/constant';
-import userContext from '../security/user-context';
-import verifyUtils from '../utils/verify-utils';
-import accountService from './account-service';
-import settingService from './setting-service';
-import saltHashUtils from '../utils/crypto-utils';
-import cryptoUtils from '../utils/crypto-utils';
-import turnstileService from './turnstile-service';
-import roleService from './role-service';
-import regKeyService from './reg-key-service';
+import KvConst from '../const/kv-const.js';
+import constant from '../const/constant.js';
+import userContext from '../security/user-context.js';
+import verifyUtils from '../utils/verify-utils.js';
+import accountService from './account-service.js';
+import settingService from './setting-service.js';
+import saltHashUtils from '../utils/crypto-utils.js';
+import cryptoUtils from '../utils/crypto-utils.js';
+import roleService from './role-service.js';
+import regKeyService from './reg-key-service.js';
 import dayjs from 'dayjs';
-import { toUtc } from '../utils/date-uitil';
+import { toUtc } from '../utils/date-uitil.js';
 import { t } from '../i18n/i18n.js';
-import verifyRecordService from './verify-record-service';
+import verifyRecordService from './verify-record-service.js';
+import captchaService from './captcha-service.js';
 
 const loginService = {
 
@@ -26,7 +26,10 @@ const loginService = {
 
 		const { email, password, token, code } = params;
 
-		let { regKey, register, registerVerify, regVerifyCount, minEmailPrefix, emailPrefixFilter } = await settingService.query(c)
+		const settingData = await settingService.query(c);
+		let { regKey, register, registerVerify, regVerifyCount, minEmailPrefix, emailPrefixFilter } = settingData;
+
+		registerVerify = captchaService.effectiveVerifyMode(c, settingData, registerVerify);
 
 		if (oauth) {
 			registerVerify = settingConst.registerVerify.CLOSE;
@@ -116,13 +119,13 @@ const loginService = {
 
 		if (registerVerify === settingConst.registerVerify.OPEN) {
 			regVerifyOpen = true
-			await turnstileService.verify(c,token)
+			await captchaService.verify(c, token, settingData)
 		}
 
 		if (registerVerify === settingConst.registerVerify.COUNT) {
 			regVerifyOpen = await verifyRecordService.isOpenRegVerify(c, regVerifyCount);
 			if (regVerifyOpen) {
-				await turnstileService.verify(c,token)
+				await captchaService.verify(c, token, settingData)
 			}
 		}
 

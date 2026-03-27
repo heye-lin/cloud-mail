@@ -1,8 +1,7 @@
-import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core';
-import { sql } from 'drizzle-orm';
+import { table, integer, text, primaryId, currentTimestampText } from './schema-core.js';
 
-export const oauth = sqliteTable('oauth', {
-	oauthId: integer('oauth_id').primaryKey({ autoIncrement: true }),
+export const oauth = table('oauth', {
+	oauthId: primaryId('oauth_id'),
 	oauthUserId: text('oauth_user_id'),
 	username: text('username'),
 	name: text('name'),
@@ -10,7 +9,7 @@ export const oauth = sqliteTable('oauth', {
 	active: integer('active'),
 	trustLevel: integer('trust_level'),
 	silenced: integer('silenced'),
-	createTime: text('create_time').default(sql`CURRENT_TIMESTAMP`).notNull(),
+	createTime: currentTimestampText('create_time', true),
+	platform: integer('platform').default(0).notNull(),
 	userId: integer('user_id').default(0).notNull()
 });
-

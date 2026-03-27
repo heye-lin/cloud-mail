@@ -1,12 +1,15 @@
-import orm from '../entity/orm';
-import { star } from '../entity/star';
-import emailService from './email-service';
-import BizError from '../error/biz-error';
+import orm from '../entity/orm.js';
+import { star } from '../entity/star.js';
+import emailService from './email-service.js';
+import BizError from '../error/biz-error.js';
 import { and, desc, eq, lt, sql, inArray } from 'drizzle-orm';
-import email from '../entity/email';
-import { isDel } from '../const/entity-const';
-import attService from "./att-service";
-import { t } from '../i18n/i18n'
+import email from '../entity/email.js';
+import { isDel } from '../const/entity-const.js';
+import attService from "./att-service.js";
+import { t } from '../i18n/i18n.js'
+
+const MAX_INT_32 = 2147483647;
+
 const starService = {
 
 	async add(c, params, userId) {
@@ -46,7 +49,7 @@ const starService = {
 		size = Number(size);
 
 		if (!emailId) {
-			emailId = 9999999999;
+			emailId = MAX_INT_32;
 		}
 
 		const list = await orm(c).select({

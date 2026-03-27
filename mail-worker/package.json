@@ -2,11 +2,18 @@
 	"name": "mail-worker",
 	"version": "0.0.0",
 	"private": true,
+	"type": "module",
 	"scripts": {
 		"dev": "wrangler dev --config wrangler-dev.toml",
 		"test": "wrangler deploy --config wrangler-test.toml",
 		"deploy": "wrangler deploy",
-		"start": "wrangler dev"
+		"start": "wrangler dev",
+		"start:node": "node src/node.js",
+		"start:node:scheduled": "SCHEDULED_ENABLED=true node src/node.js",
+		"init:pg": "node src/scripts/init-pg.js",
+		"scheduled:node": "node src/scripts/run-scheduled.js",
+		"send:test:inbound": "node src/scripts/send-test-inbound.js",
+		"relay:stdin:inbound": "node src/scripts/relay-inbound-stdin.js"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.7.5",
@@ -14,14 +21,17 @@
 		"wrangler": "^4.7.0"
 	},
 	"dependencies": {
+		"@hono/node-server": "^1.14.1",
 		"@aws-sdk/client-s3": "^3.882.0",
 		"@cloudflare/vite-plugin": "1.6.0",
 		"dayjs": "^1.11.13",
 		"drizzle-orm": "^0.42.0",
 		"hono": "^4.7.5",
 		"i18next": "^25.3.2",
+		"ioredis": "^5.8.1",
 		"linkedom": "^0.18.10",
 		"postal-mime": "^2.4.3",
+		"postgres": "^3.4.7",
 		"resend": "^6.4.1",
 		"ua-parser-js": "^2.0.3",
 		"uuid": "^11.1.0"

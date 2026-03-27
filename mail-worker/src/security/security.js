@@ -1,12 +1,12 @@
-import BizError from '../error/biz-error';
-import constant from '../const/constant';
-import jwtUtils from '../utils/jwt-utils';
-import KvConst from '../const/kv-const';
+import BizError from '../error/biz-error.js';
+import constant from '../const/constant.js';
+import jwtUtils from '../utils/jwt-utils.js';
+import KvConst from '../const/kv-const.js';
 import dayjs from 'dayjs';
-import userService from '../service/user-service';
-import permService from '../service/perm-service';
-import { t } from '../i18n/i18n'
-import app from '../hono/hono';
+import userService from '../service/user-service.js';
+import permService from '../service/perm-service.js';
+import { t } from '../i18n/i18n.js'
+import app from '../hono/hono.js';
 
 const exclude = [
 	'/login',
@@ -14,6 +14,7 @@ const exclude = [
 	'/oss',
 	'/setting/websiteConfig',
 	'/webhooks',
+	'/healthz',
 	'/init',
 	'/public/genToken',
 	'/telegram',

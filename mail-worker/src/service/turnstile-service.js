@@ -1,16 +1,16 @@
-import BizError from '../error/biz-error';
-import settingService from './setting-service';
-import { t } from '../i18n/i18n'
+import BizError from '../error/biz-error.js';
+import settingService from './setting-service.js';
+import { t } from '../i18n/i18n.js'
 
 const turnstileService = {
 
-	async verify(c, token) {
+	async verify(c, token, settingRow = null) {
 
 		if (!token) {
 			throw new BizError(t('emptyBotToken'),400);
 		}
 
-		const settingRow = await settingService.query(c)
+		const resolvedSetting = settingRow || await settingService.query(c)
 
 		const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
 			method: 'POST',
@@ -18,7 +18,7 @@ const turnstileService = {
 				'Content-Type': 'application/x-www-form-urlencoded'
 			},
 			body: new URLSearchParams({
-				secret: settingRow.secretKey,
+				secret: resolvedSetting.secretKey,
 				response: token,
 				remoteip: c.req.header('cf-connecting-ip')
 			})

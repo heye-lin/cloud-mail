@@ -1,7 +1,7 @@
-import { sqliteTable, text, integer} from 'drizzle-orm/sqlite-core';
-import { sql } from 'drizzle-orm';
-export const email = sqliteTable('email', {
-	emailId: integer('email_id').primaryKey({ autoIncrement: true }),
+import { table, text, integer, primaryId, currentTimestampText } from './schema-core.js';
+
+export const email = table('email', {
+	emailId: primaryId('email_id'),
 	sendEmail: text('send_email'),
 	name: text('name'),
 	accountId: integer('account_id').notNull(),
@@ -22,7 +22,7 @@ export const email = sqliteTable('email', {
 	resendEmailId: text('resend_email_id'),
 	message: text('message'),
 	unread: integer('unread').default(0).notNull(),
-	createTime: text('create_time').default(sql`CURRENT_TIMESTAMP`).notNull(),
+	createTime: currentTimestampText('create_time', true),
 	isDel: integer('is_del').default(0).notNull()
 });
 export default email

@@ -1,6 +1,7 @@
-import { sqliteTable, text, integer} from 'drizzle-orm/sqlite-core';
-export const rolePerm = sqliteTable('role_perm', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
+import { table, integer, primaryId } from './schema-core.js';
+
+export const rolePerm = table('role_perm', {
+	id: primaryId('id'),
 	roleId: integer('role_id'),
 	permId: integer('perm_id')
 });

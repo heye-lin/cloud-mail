@@ -1,12 +1,12 @@
-import { sqliteTable, text, integer} from 'drizzle-orm/sqlite-core';
-import { sql } from 'drizzle-orm';
-export const account = sqliteTable('account', {
-	accountId: integer('account_id').primaryKey({ autoIncrement: true }),
+import { table, text, integer, primaryId, currentTimestampText } from './schema-core.js';
+
+export const account = table('account', {
+	accountId: primaryId('account_id'),
 	email: text('email').notNull(),
 	name: text('name').notNull().default(''),
 	status: integer('status').default(0).notNull(),
 	latestEmailTime: text('latest_email_time'),
-	createTime: text('create_time').default(sql`CURRENT_TIMESTAMP`),
+	createTime: currentTimestampText('create_time'),
 	userId: integer('user_id').notNull(),
 	allReceive: integer('all_receive').default(0).notNull(),
 	sort: integer('sort').default(0).notNull(),
