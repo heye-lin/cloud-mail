@@ -1,7 +1,7 @@
 <p align="center">
     <img src="doc/demo/logo.png" width="80px" />
     <h1 align="center">Cloud Mail</h1>
-    <p align="center">基于 Cloudflare 的简约响应式邮箱服务，支持邮件发送、附件收发 🎉</p> 
+    <p align="center">支持 Cloudflare Workers 与 Node 自托管的简约响应式邮箱服务，支持邮件发送、附件收发 🎉</p>
     <p align="center">
         简体中文 | <a href="/README-en.md" style="margin-left: 5px">English </a>
     </p>
@@ -32,7 +32,13 @@
 
 ## 项目简介
 
-只需要一个域名，就可以创建多个不同的邮箱，类似各大邮箱平台，本项目支持署到 Cloudflare Workers ，降低服务器成本，搭建自己的邮箱服务
+只需要一个域名，就可以创建多个不同的邮箱，类似各大邮箱平台。本项目既可以部署到 Cloudflare Workers 以降低基础设施成本，也支持部署到自托管 Node 运行时，逐步迁移到 PostgreSQL、Redis 和 S3/MinIO 等常见服务，搭建自己的邮箱服务。
+
+## 部署路径
+
+- [Cloudflare 部署文档](https://doc.skymail.ink)
+- [Node 运行时说明](./mail-worker/README-node.md)
+- [自托管部署清单](./mail-worker/examples/deploy/DEPLOY.md)
 
 ## 项目展示
 
@@ -48,7 +54,7 @@
 
 ## 功能介绍
 
-- **💰 低成本使用**： 可部署到 Cloudflare Workers 降低服务器成本
+- **💰 双运行模式**：可部署到 Cloudflare Workers，也可运行在自托管 Node 服务
 
 - **💻 响应式设计**：响应式布局自动适配PC和大部分手机端浏览器
 
@@ -56,9 +62,11 @@
 
 - **🛡️ 管理员功能**：可以对用户，邮件进行管理，RABC权限控制对功能及使用资源限制
 
-- **📦 附件收发**：支持收发附件，使用R2对象存储保存和下载文件
+- **📦 附件收发**：支持收发附件，可使用 R2 或兼容 S3 的对象存储保存和下载文件
 
-- **🔔 邮件推送**：接收邮件后可以转发到TG机器人或其他服务商邮箱
+- **🔔 邮件推送**：接收邮件后可以转发到 TG 机器人或其他服务商邮箱
+
+- **📨 入站邮件接收**：支持 Cloudflare Email Routing，也支持 Node Webhook、Mailgun、Postmark 与 SMTP/MTA 管道接入
 
 - **📡 开放API**：支持使用API批量生成用户，多条件查询邮件 
 
@@ -66,7 +74,7 @@
 
 - **🎨 个性化设置**：可以自定义网站标题，登录背景，透明度
 
-- **🤖 人机验证**：集成Turnstile人机验证，防止人机批量注册
+- **🤖 人机验证**：集成 Turnstile 人机验证，也支持在 Node 自托管模式下按配置关闭验证码
 
 - **📜 更多功能**：正在开发中...
 
@@ -74,7 +82,7 @@
 
 ## 技术栈
 
-- **平台**：[Cloudflare Workers](https://developers.cloudflare.com/workers/)
+- **平台**：[Cloudflare Workers](https://developers.cloudflare.com/workers/) / [Node.js](https://nodejs.org/)
 
 - **Web框架**：[Hono](https://hono.dev/)
 
@@ -86,11 +94,11 @@
 
 - **邮件推送：** [Resend](https://resend.com/)
 
-- **缓存**：[Cloudflare KV](https://developers.cloudflare.com/kv/)
+- **缓存**：[Cloudflare KV](https://developers.cloudflare.com/kv/) / [Redis](https://redis.io/)
 
-- **数据库**：[Cloudflare D1](https://developers.cloudflare.com/d1/)
+- **数据库**：[Cloudflare D1](https://developers.cloudflare.com/d1/) / [PostgreSQL](https://www.postgresql.org/)
 
-- **文件存储**：[Cloudflare R2](https://developers.cloudflare.com/r2/)
+- **文件存储**：[Cloudflare R2](https://developers.cloudflare.com/r2/) / S3 兼容对象存储
 
 ## 目录结构
 
@@ -112,9 +120,13 @@ cloud-mail
 │   │   ├── service			    # 业务服务层
 │   │   ├── template			# 消息模板
 │   │   ├── utils			    # 工具类
-│   │   └── index.js			# 入口文件
-│   ├── pageckge.json			# 项目依赖
-│   └── wrangler.toml			# 项目配置
+│   │   ├── index.js			# Cloudflare Worker 入口
+│   │   └── node.js			    # Node 运行时入口
+│   ├── migrations             # PostgreSQL 初始化脚本
+│   ├── examples			    # Node 部署与入站邮件示例
+│   ├── package.json			# 项目依赖
+│   ├── wrangler.toml			# Worker 项目配置
+│   └── README-node.md			# Node 运行时说明
 │
 ├── mail-vue				    # vue前端项目
 │   ├── src
@@ -151,6 +163,4 @@ cloud-mail
 ## 交流
 
 [Telegram](https://t.me/cloud_mail_tg)
-
-
 

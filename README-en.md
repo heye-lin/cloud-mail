@@ -1,7 +1,7 @@
 <p align="center">
     <img src="doc/demo/logo.png" width="80px" />
     <h1 align="center">Cloud Mail</h1>
-    <p align="center">A simple, responsive email service designed to run on Cloudflare Workers 🎉</p> 
+    <p align="center">A simple, responsive email service that can run on Cloudflare Workers or self-hosted Node 🎉</p>
     <p align="center">
        <a href="/README.md" style="margin-left: 5px">简体中文</a> | English 
     </p>
@@ -30,7 +30,13 @@
 </p>
 
 ## Description
-With only one domain, you can create multiple different email addresses, similar to major email platforms. This project can be deployed on Cloudflare Workers to reduce server costs and build your own email service.
+With only one domain, you can create multiple email addresses, similar to major email platforms. This project can be deployed on Cloudflare Workers to keep infrastructure costs low, and it now also supports a self-hosted Node runtime that moves the backend toward PostgreSQL, Redis, and S3/MinIO style services.
+
+## Deployment Paths
+
+- [Cloudflare deployment guide](https://doc.skymail.ink/en/)
+- [Node runtime notes](./mail-worker/README-node.md)
+- [Self-hosted deployment checklist](./mail-worker/examples/deploy/DEPLOY.md)
 ## Project Showcase
 
 - [Live Demo](https://skymail.ink)<br>
@@ -43,7 +49,7 @@ With only one domain, you can create multiple different email addresses, similar
 
 ## Features
 
-- **💰 Low-Cost Usage**: No server required — deploy to Cloudflare Workers to reduce costs.
+- **💰 Dual Runtime Options**: Run on Cloudflare Workers or as a self-hosted Node service.
 
 - **💻 Responsive Design**: Automatically adapts to both desktop and most mobile browsers.
 
@@ -51,9 +57,11 @@ With only one domain, you can create multiple different email addresses, similar
 
 - **🛡️ Admin Features**: Admin controls for user and email management with RBAC-based access control.
 
-- **📦 Attachment Support**: Send and receive attachments, stored and downloaded via R2 object storage.
+- **📦 Attachment Support**: Send and receive attachments with storage backed by R2 or S3-compatible object storage.
 
 - **🔔 Email Push**: Forward received emails to Telegram bots or other email providers.
+
+- **📨 Inbound Email Intake**: Accept inbound email from Cloudflare Email Routing, a Node webhook, Mailgun, Postmark, or SMTP/MTA pipe integrations.
 
 - **📡 Open API**: Supports batch user creation via API and multi-condition email queries
 
@@ -61,13 +69,13 @@ With only one domain, you can create multiple different email addresses, similar
 
 - **🎨 Personalization**: Customize website title, login background, and transparency.
 
-- **🤖 CAPTCHA**: Integrated with Turnstile CAPTCHA to prevent automated registration.
+- **🤖 CAPTCHA**: Integrated with Turnstile CAPTCHA, with optional disablement in the self-hosted Node path.
 
 - **📜 More Features**: Under development...
 
 ## Tech Stack
 
-- **Platform**: [Cloudflare Workers](https://developers.cloudflare.com/workers/)
+- **Platform**: [Cloudflare Workers](https://developers.cloudflare.com/workers/) / [Node.js](https://nodejs.org/)
 
 - **Web Framework**: [Hono](https://hono.dev/)
 
@@ -79,11 +87,11 @@ With only one domain, you can create multiple different email addresses, similar
 
 - **Email Service**: [Resend](https://resend.com/)
 
-- **Cache**: [Cloudflare KV](https://developers.cloudflare.com/kv/)
+- **Cache**: [Cloudflare KV](https://developers.cloudflare.com/kv/) / [Redis](https://redis.io/)
 
-- **Database**: [Cloudflare D1](https://developers.cloudflare.com/d1/)
+- **Database**: [Cloudflare D1](https://developers.cloudflare.com/d1/) / [PostgreSQL](https://www.postgresql.org/)
 
-- **File Storage**: [Cloudflare R2](https://developers.cloudflare.com/r2/)
+- **File Storage**: [Cloudflare R2](https://developers.cloudflare.com/r2/) / S3-compatible object storage
 
 ## Project Structure
 
@@ -105,9 +113,13 @@ cloud-mail
 │   │   ├── service			    # Business logic layer
 │   │   ├── template			# Message templates
 │   │   ├── utils			    # Utility functions
-│   │   └── index.js			# Entry point
+│   │   ├── index.js			# Cloudflare Worker entry point
+│   │   └── node.js			    # Node runtime entry point
+│   ├── migrations             # PostgreSQL bootstrap scripts
+│   ├── examples			    # Node deployment and inbound mail examples
 │   ├── package.json			# Project dependencies
-│   └── wrangler.toml			# Project configuration
+│   ├── wrangler.toml			# Worker configuration
+│   └── README-node.md			# Node runtime notes
 │
 ├─ mail-vue				        # Frontend Vue project
 │   ├── src
