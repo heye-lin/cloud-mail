@@ -6,6 +6,7 @@ on:
     paths:
       - "mail-worker/**"
       - "mail-vue/**"
+      - ".github/workflows/deploy-cloudflare.yml"
   workflow_dispatch:
 
 jobs:
@@ -63,6 +64,20 @@ jobs:
         run: |
           
           echo "🔐 Starting environment setup..."
+
+          normalize_env() {
+            local name="$1"
+            local value="${!name:-}"
+            value="${value//$'\r'/}"
+            value="${value//$'\n'/}"
+            value="$(printf '%s' "$value" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+            export "$name=$value"
+            printf '%s=%s\n' "$name" "$value" >> "$GITHUB_ENV"
+          }
+
+          for name in NAME CUSTOM_DOMAIN DOMAIN ADMIN JWT_SECRET CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID D1_DATABASE_ID KV_NAMESPACE_ID R2_BUCKET_NAME PROJECT_LINK LINUXDO_CLIENT_ID LINUXDO_CLIENT_SECRET LINUXDO_CALLBACK_URL LINUXDO_SWITCH; do
+            normalize_env "$name"
+          done
           
           if [ -z "$JWT_SECRET" ] || grep -q '[?%#/\\]' <<< "$JWT_SECRET"; then
             echo "❌ JWT_SECRET variable is empty or contains invalid characters (?, %, #, /, \\)."
@@ -73,6 +88,9 @@ jobs:
             echo "❌ DOMAIN variable must be a JSON array (e.g., [\"example.com\"])."
             exit 1
           fi
+          DOMAIN="$(jq -c . <<< "$DOMAIN")"
+          export DOMAIN
+          printf 'DOMAIN=%s\n' "$DOMAIN" >> "$GITHUB_ENV"
           
           if [ -z "$ADMIN" ]; then
             echo "❌ ADMIN variable cannot be empty."
