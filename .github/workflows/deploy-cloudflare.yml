@@ -112,7 +112,7 @@ jobs:
             echo "::warning:: CUSTOM_DOMAIN variable is not set."
           fi
           
-          CONFIG_FILE="wrangler-action.toml"
+          export CONFIG_FILE="wrangler-action.toml"
 
           python3 - <<'PY'
           import json
