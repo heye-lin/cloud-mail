@@ -70,7 +70,8 @@ jobs:
             local value="${!name:-}"
             value="${value//$'\r'/}"
             value="${value//$'\n'/}"
-            value="$(printf '%s' "$value" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+            value="${value#"${value%%[![:space:]]*}"}"
+            value="${value%"${value##*[![:space:]]}"}"
             export "$name=$value"
             printf '%s=%s\n' "$name" "$value" >> "$GITHUB_ENV"
           }
@@ -112,30 +113,59 @@ jobs:
           fi
           
           CONFIG_FILE="wrangler-action.toml"
-          
-          if [ -z "$R2_BUCKET_NAME" ]; then
-            sed -i '/\[\[r2_buckets\]\]/,/^$/d' "$CONFIG_FILE"
-          fi
-          
-          if [ -z "$PROJECT_LINK" ]; then
-            sed -i '/^project_link = /d' "$CONFIG_FILE"
-          fi
-          
-          if [ -z "$LINUXDO_CLIENT_ID" ] || [ -z "$LINUXDO_CLIENT_SECRET" ]; then
-            sed -i '/^linuxdo_client_id = /,/^linuxdo_switch = /d' "$CONFIG_FILE"
-          fi
-          
-          if [ -z "$CUSTOM_DOMAIN" ]; then
-            sed -i '/\[\[routes\]\]/,/^$/d' "$CONFIG_FILE"
-          fi
 
           python3 - <<'PY'
           import json
           import os
           from pathlib import Path
 
+          def remove_table(text, header):
+              lines = text.splitlines(keepends=True)
+              result = []
+              index = 0
+              while index < len(lines):
+                  if lines[index].strip() == header:
+                      index += 1
+                      while index < len(lines) and lines[index].strip():
+                          index += 1
+                      if index < len(lines) and not lines[index].strip():
+                          index += 1
+                      continue
+                  result.append(lines[index])
+                  index += 1
+              return "".join(result)
+
+          def remove_line_prefix(text, prefix):
+              return "".join(
+                  line for line in text.splitlines(keepends=True)
+                  if not line.lstrip().startswith(prefix)
+              )
+
+          def remove_line_range(text, start_prefix, end_prefix):
+              result = []
+              skipping = False
+              for line in text.splitlines(keepends=True):
+                  stripped = line.lstrip()
+                  if not skipping and stripped.startswith(start_prefix):
+                      skipping = True
+                  if skipping:
+                      if stripped.startswith(end_prefix):
+                          skipping = False
+                      continue
+                  result.append(line)
+              return "".join(result)
+
           config_file = Path(os.environ["CONFIG_FILE"])
           text = config_file.read_text(encoding="utf-8")
+
+          if not os.environ.get("R2_BUCKET_NAME"):
+              text = remove_table(text, "[[r2_buckets]]")
+          if not os.environ.get("PROJECT_LINK"):
+              text = remove_line_prefix(text, "project_link = ")
+          if not os.environ.get("LINUXDO_CLIENT_ID") or not os.environ.get("LINUXDO_CLIENT_SECRET"):
+              text = remove_line_range(text, "linuxdo_client_id = ", "linuxdo_switch = ")
+          if not os.environ.get("CUSTOM_DOMAIN"):
+              text = remove_table(text, "[[routes]]")
 
           # DOMAIN is a JSON array and must replace the quoted TOML placeholder.
           text = text.replace('"${DOMAIN}"', os.environ["DOMAIN"])
