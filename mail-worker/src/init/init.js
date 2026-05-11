@@ -1,5 +1,6 @@
 import settingService from '../service/setting-service';
 import emailUtils from '../utils/email-utils';
+import cryptoUtils from '../utils/crypto-utils';
 import {emailConst} from "../const/entity-const";
 
 const dbInit = {
@@ -29,6 +30,7 @@ const dbInit = {
 		await this.v2_8DB(c);
 		await this.v2_9DB(c);
 		await this.v3_0DB(c);
+		await this.ensureAdminUser(c);
 		await settingService.refresh(c);
 		return c.text('success');
 	},
@@ -650,6 +652,53 @@ const dbInit = {
 		})
 
 		await c.env.db.batch(queryList);
+	},
+
+	async ensureAdminUser(c) {
+		const adminEmail = c.env.admin;
+
+		if (!adminEmail) {
+			return;
+		}
+
+		const adminDomain = emailUtils.getDomain(adminEmail);
+		const domainList = Array.isArray(c.env.domain) ? c.env.domain : JSON.parse(c.env.domain || '[]');
+
+		if (!domainList.includes(adminDomain)) {
+			throw new Error('Admin email domain is not included in env.domain');
+		}
+
+		let userRow = await c.env.db
+			.prepare('SELECT user_id FROM user WHERE email COLLATE NOCASE = ? LIMIT 1')
+			.bind(adminEmail)
+			.first();
+
+		if (!userRow) {
+			const adminPassword = c.env.admin_password || c.env.ADMIN_PASSWORD || c.env.jwt_secret;
+			const { salt, hash } = await cryptoUtils.hashPassword(adminPassword);
+
+			await c.env.db
+				.prepare('INSERT INTO user (email, password, salt, type) VALUES (?, ?, ?, 1)')
+				.bind(adminEmail, hash, salt)
+				.run();
+
+			userRow = await c.env.db
+				.prepare('SELECT user_id FROM user WHERE email COLLATE NOCASE = ? LIMIT 1')
+				.bind(adminEmail)
+				.first();
+		}
+
+		const accountRow = await c.env.db
+			.prepare('SELECT account_id FROM account WHERE email COLLATE NOCASE = ? LIMIT 1')
+			.bind(adminEmail)
+			.first();
+
+		if (!accountRow) {
+			await c.env.db
+				.prepare('INSERT INTO account (email, name, user_id) VALUES (?, ?, ?)')
+				.bind(adminEmail, emailUtils.getName(adminEmail), userRow.user_id)
+				.run();
+		}
 	}
 };
 export { dbInit };
