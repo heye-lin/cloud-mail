@@ -18,6 +18,7 @@ import { t } from '../i18n/i18n'
 import reqUtils from '../utils/req-utils';
 import {oauth} from "../entity/oauth";
 import oauthService from "./oauth-service";
+import { buildLikePattern, likeIgnoreCase } from '../utils/like-utils';
 
 const userService = {
 
@@ -130,7 +131,10 @@ const userService = {
 
 
 		if (email) {
-			conditions.push(sql`${user.email} COLLATE NOCASE LIKE ${'%'+ email + '%'}`);
+			const pattern = buildLikePattern(email);
+			if (pattern) {
+				conditions.push(likeIgnoreCase(user.email, pattern));
+			}
 		}
 
 

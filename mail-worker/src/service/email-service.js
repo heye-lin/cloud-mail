@@ -1,7 +1,7 @@
 import orm from '../entity/orm';
 import email from '../entity/email';
 import { attConst, emailConst, isDel, settingConst } from '../const/entity-const';
-import { and, desc, eq, gt, inArray, lt, count, asc, sql, ne, or, like, lte, gte } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, lt, count, asc, ne, or, lte, gte } from 'drizzle-orm';
 import { star } from '../entity/star';
 import settingService from './setting-service';
 import accountService from './account-service';
@@ -21,6 +21,7 @@ import domainUtils from '../utils/domain-uitls';
 import account from "../entity/account";
 import { att } from '../entity/att';
 import telegramService from './telegram-service';
+import { buildLikePattern, likeIgnoreCase } from '../utils/like-utils';
 
 const emailService = {
 
@@ -638,24 +639,36 @@ const emailService = {
 		}
 
 		if (userEmail) {
-			conditions.push(sql`${user.email} COLLATE NOCASE LIKE ${'%'+ userEmail + '%'}`);
+			const pattern = buildLikePattern(userEmail);
+			if (pattern) {
+				conditions.push(likeIgnoreCase(user.email, pattern));
+			}
 		}
 
 		if (accountEmail) {
-			conditions.push(
-				or(
-					sql`${email.toEmail} COLLATE NOCASE LIKE ${'%'+ accountEmail + '%'}`,
-					sql`${email.sendEmail} COLLATE NOCASE LIKE ${'%'+ accountEmail + '%'}`,
+			const pattern = buildLikePattern(accountEmail);
+			if (pattern) {
+				conditions.push(
+					or(
+						likeIgnoreCase(email.toEmail, pattern),
+						likeIgnoreCase(email.sendEmail, pattern),
+					)
 				)
-			)
+			}
 		}
 
 		if (name) {
-			conditions.push(sql`${email.name} COLLATE NOCASE LIKE ${'%'+ name + '%'}`);
+			const pattern = buildLikePattern(name);
+			if (pattern) {
+				conditions.push(likeIgnoreCase(email.name, pattern));
+			}
 		}
 
 		if (subject) {
-			conditions.push(sql`${email.subject} COLLATE NOCASE LIKE ${'%'+ subject + '%'}`);
+			const pattern = buildLikePattern(subject);
+			if (pattern) {
+				conditions.push(likeIgnoreCase(email.subject, pattern));
+			}
 		}
 
 		conditions.push(ne(email.status, emailConst.status.SAVING));
@@ -768,19 +781,31 @@ const emailService = {
 		const conditions = []
 
 		if (sendName) {
-			conditions.push(like(email.name,`${left ? '%' : ''}${sendName}${right ? '%' : ''}`))
+			const pattern = buildLikePattern(sendName, { left, right });
+			if (pattern) {
+				conditions.push(likeIgnoreCase(email.name, pattern))
+			}
 		}
 
 		if (subject) {
-			conditions.push(like(email.subject,`${left ? '%' : ''}${subject}${right ? '%' : ''}`))
+			const pattern = buildLikePattern(subject, { left, right });
+			if (pattern) {
+				conditions.push(likeIgnoreCase(email.subject, pattern))
+			}
 		}
 
 		if (sendEmail) {
-			conditions.push(like(email.sendEmail,`${left ? '%' : ''}${sendEmail}${right ? '%' : ''}`))
+			const pattern = buildLikePattern(sendEmail, { left, right });
+			if (pattern) {
+				conditions.push(likeIgnoreCase(email.sendEmail, pattern))
+			}
 		}
 
 		if (toEmail) {
-			conditions.push(like(email.toEmail,`${left ? '%' : ''}${toEmail}${right ? '%' : ''}`))
+			const pattern = buildLikePattern(toEmail, { left, right });
+			if (pattern) {
+				conditions.push(likeIgnoreCase(email.toEmail, pattern))
+			}
 		}
 
 		if (startTime && endTime) {

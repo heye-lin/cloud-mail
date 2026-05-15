@@ -1,7 +1,7 @@
 import BizError from '../error/biz-error';
 import orm from '../entity/orm';
 import { v4 as uuidv4 } from 'uuid';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 import saltHashUtils from '../utils/crypto-utils';
 import cryptoUtils from '../utils/crypto-utils';
 import emailUtils from '../utils/email-utils';
@@ -14,6 +14,7 @@ import { isDel, roleConst } from '../const/entity-const';
 import email from '../entity/email';
 import userService from './user-service';
 import KvConst from '../const/kv-const';
+import { CONTENT_LIKE_TERM_MAX_LENGTH, buildLegacyLikePattern, likeIgnoreCase } from '../utils/like-utils';
 
 const publicService = {
 
@@ -51,23 +52,38 @@ const publicService = {
 		let conditions = []
 
 		if (toEmail) {
-			conditions.push(sql`${email.toEmail} COLLATE NOCASE LIKE ${toEmail}`)
+			const pattern = buildLegacyLikePattern(toEmail);
+			if (pattern) {
+				conditions.push(likeIgnoreCase(email.toEmail, pattern))
+			}
 		}
 
 		if (sendEmail) {
-			conditions.push(sql`${email.sendEmail} COLLATE NOCASE LIKE ${sendEmail}`)
+			const pattern = buildLegacyLikePattern(sendEmail);
+			if (pattern) {
+				conditions.push(likeIgnoreCase(email.sendEmail, pattern))
+			}
 		}
 
 		if (sendName) {
-			conditions.push(sql`${email.name} COLLATE NOCASE LIKE ${sendName}`)
+			const pattern = buildLegacyLikePattern(sendName);
+			if (pattern) {
+				conditions.push(likeIgnoreCase(email.name, pattern))
+			}
 		}
 
 		if (subject) {
-			conditions.push(sql`${email.subject} COLLATE NOCASE LIKE ${subject}`)
+			const pattern = buildLegacyLikePattern(subject);
+			if (pattern) {
+				conditions.push(likeIgnoreCase(email.subject, pattern))
+			}
 		}
 
 		if (content) {
-			conditions.push(sql`${email.content} COLLATE NOCASE LIKE ${content}`)
+			const pattern = buildLegacyLikePattern(content, { maxLength: CONTENT_LIKE_TERM_MAX_LENGTH });
+			if (pattern) {
+				conditions.push(likeIgnoreCase(email.content, pattern))
+			}
 		}
 
 		if (type || type === 0) {
